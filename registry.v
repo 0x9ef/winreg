@@ -1,5 +1,6 @@
 // By 0x9ef
 module winreg
+#include <winreg.h>
 
 // A handle to the open key to be closed. 
 // The handle must have been opened by the 
@@ -7,15 +8,12 @@ module winreg
 // RegOpenKeyTransacted, or RegConnectRegistry function.
 type Key voidptr
 
-// Status of action.
-type Status u32
-
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
 // close_key closes a handle to the specified registry key.
-fn close_key(k mut Key) Status {
+fn close_key(k mut Key) i64 {
     if k != HKEY_MAKE {
         status := C.RegCloseKey(k)
-        if status == ERROR_SUCCESS {
+        if status == SUCCESS {
             k = 0x00000000 // reset key
         }
         return status
@@ -23,26 +21,26 @@ fn close_key(k mut Key) Status {
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
-fn (k mut Key) close() Status {
-    return close_key(k)
+pub fn (k Key) close() i64 {
+    return close_key(mut k)
 }
 
 // Ref - winnt.h
 const (
-    ERROR_SUCCESS  =  0
-    ERROR_MAKED    =  0xffffffff // Not from winnt.h
+    SUCCESS  =  0
+    MAKED    =  0xffffffff // Not from winnt.h
 )
 
 // Ref - winnt.h
 const ( 
-    HKEY_MAKE                 =  Key ( i32( 0xffffffff ) )           
-    HKEY_CLASSES_ROOT         =  Key ( i32( 0x80000000 ) )
-    HKEY_CURRENT_USER         =  Key ( i32( 0x80000001 ) )
-    HKEY_LOCAL_MACHINE        =  Key ( i32( 0x80000002 ) )
-    HKEY_USERS                =  Key ( i32( 0x80000003 ) )
-    HKEY_PERFORMANCE_DATA     =  Key ( i32( 0x80000004 ) )
-    HKEY_PERFORMANCE_TEXT     =  Key ( i32( 0x80000050 ) )
-    HKEY_PERFORMANCE_NLSTEXT  =  Key ( i32( 0x80000060 ) )
+    HKEY_MAKE                 =  Key (*u64( 0xffffffff ))
+    HKEY_CLASSES_ROOT         =  Key (*u64( 0x80000000 ))
+    HKEY_CURRENT_USER         =  Key (*u64( 0x80000001 ))
+    HKEY_LOCAL_MACHINE        =  Key (*u64( 0x80000002 ))
+    HKEY_USERS                =  Key (*u64( 0x80000003 ))
+    HKEY_PERFORMANCE_DATA     =  Key (*u64( 0x80000004 ))
+    HKEY_PERFORMANCE_TEXT     =  Key (*u64( 0x80000050 ))
+    HKEY_PERFORMANCE_NLSTEXT  =  Key (*u64( 0x80000060 ))
 )
 
 const (
@@ -51,7 +49,7 @@ const (
     REG_EXPAND_SZ                   =  u32( 0x00000002 )  // Unicode nul terminated string (with environment variable references)
     REG_BINARY                      =  u32( 0x00000003 )  // Free form binary
     REG_DWORD                       =  u32( 0x00000004 )  // 32-bit number
-    REG_DWORD_LITTLE_ENDIAN         =  u32( 0x00000004 )  // 32-bit number (same as REG_DWORD)
+    REG_DWORD_LITTLE_ENDIAN         =  REG_DWORD          // 32-bit number (same as REG_DWORD)
     REG_DWORD_BIG_ENDIAN            =  u32( 0x00000005 )  // 32-bit number
     REG_LINK                        =  u32( 0x00000006 )  // Symbolic Link (unicode)
     REG_MULTI_SZ                    =  u32( 0x00000007 )  // Multiple Unicode strings
@@ -59,7 +57,7 @@ const (
     REG_FULL_RESOURCE_DESCRIPTOR    =  u32( 0x00000009 )  // Resource list in the hardware description
     REG_RESOURCE_REQUIREMENTS_LIST  =  u32( 0x00000010 )
     REG_QWORD                       =  u32( 0x00000011 )  // 64-bit number
-    REG_QWORD_LITTLE_ENDIAN         =  u32( 0x00000011 )  // 64-bit number (same as REG_QWORD)
+    REG_QWORD_LITTLE_ENDIAN         =  REG_QWORD          // 64-bit number (same as REG_QWORD)
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regcreatekeyexa
@@ -161,14 +159,14 @@ const (
 
     // Combines the STANDARD_RIGHTS_REQUIRED, KEY_QUERY_VALUE, KEY_SET_VALUE, 
     // KEY_CREATE_SUB_KEY, KEY_ENUMERATE_SUB_KEYS, KEY_NOTIFY, and KEY_CREATE_LINK access rights.
-    KEY_ALL_ACCESS =  0xF003F
+    KEY_ALL_ACCESS =  u32( 0xF003F )
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regconnectregistrya
-fn connect_registry(k mut Key, machine_name string) ?Key {
-    mut _p_hkey := Key(HKEY_MAKE) // initialize
+fn connect_registry(k Key, machine_name string) ?Key {
+    mut _p_hkey := HKEY_MAKE // initialize
     status := C.RegConnectRegistry(machine_name.cstr(), k, &_p_hkey)
-    if (status != ERROR_SUCCESS) {
+    if status != SUCCESS {
         // Must be handle with get_last_error()
         return error('Cannot connect to remote rigistry.')
     }
@@ -176,10 +174,10 @@ fn connect_registry(k mut Key, machine_name string) ?Key {
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regcopytreea
-fn copy_tree(k_src mut Key, path string, k_dst mut Key) Status {
-    // Must be fixed
-    return C.RegCopyTree(k_src, path.cstr(), k_dst)
-}
+//fn copy_tree(k_src mut Key, path string, k_dst mut Key) u32 {
+//    // Must be fixed
+//    return C.RegCopyTree(k_src, path.cstr(), k_dst)
+//}
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regcreatekeyexa
 const (
@@ -188,11 +186,12 @@ const (
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regcreatekeya
-fn create_key(k mut Key, path string, access u32) ?/***/Key {
-    mut _p_hkey := Key(HKEY_MAKE)
-    status := C.RegCreateKeyEx(k, 
-        path.cstr(), REG_DEFAULT_RESERVED, 0, REG_OPTION_VOLATILE, access, 0, &_p_hkey, REG_DEFAULT_DISPOSITION)
-    if status != ERROR_SUCCESS {
+pub fn create_key(branch Key, path string, access u32) ?/***/Key {
+    mut _p_hkey := HKEY_MAKE
+    //mut _p_dsp := u32( REG_DEFAULT_DISPOSITION )
+    status := C.RegCreateKeyEx(branch, 
+        path.cstr(), REG_DEFAULT_RESERVED, 0, REG_OPTION_NON_VOLATILE, access, 0, &_p_hkey, /*&_p_dsp*/0)
+    if status != SUCCESS {
         return error('Cannot create registry key')
     }
     return _p_hkey // &_p_hkey Must return pointer of Key
@@ -206,71 +205,73 @@ const (
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdeletekeya
-fn delete_key(k mut Key, path string) Status {
-    return C.RegDeleteKey(k, path.cstr())
+pub fn delete_key(branch Key, path string) i64 {
+    return C.RegDeleteKey(branch, path.cstr())
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdeletekeyvaluea
 // delete_key_value removes the specified value from the specified registry key and subkey.
-fn delete_key_value(k mut Key, path string, v string) Status {
-    return C.RegDeleteKeyValue(k, path.cstr(), v.cstr())
-}
+//fn delete_key_value(k mut Key, path string, v string) i64 {
+//    return C.RegDeleteKeyValue(k, path.cstr(), v.cstr())
+//}
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdeletetreea
 // delete_tree deletes the subkeys and values of the specified key recursively.
-fn delete_tree(k mut Key, path string) Status {
-    return C.RegDeleteTree(k, path.cstr())
-}
+//fn delete_tree(k mut Key, path string) i64 {
+//    return C.RegDeleteTree(k, path.cstr())
+//}
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdeletevaluea
-// delete_value removes a named value from the specified registry key. 
-// Note that value names are not case sensitive.
-fn delete_value(k mut Key, name string) Status {
+fn delete_value(k mut Key, name string) i64 {
     return C.RegDeleteValue(k, name.cstr()) 
 }
 
-// Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdeletevaluea
-fn (k mut Key) delete_value(name string) Status {
-    return delete_value(k, name)
+// delete_value removes a named value from the specified registry key. 
+// Note that value names are not case sensitive.
+pub fn (k Key) delete_value(name string) i64 {
+    return delete_value(mut k, name)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regdisablereflectionkey
-// Disables registry reflection for the specified key. 
+// disable_reflection_key disables registry reflection for the specified key. 
 // Disabling reflection for a key does not affect reflection of any subkeys.
-fn disable_reflection_key(k Key) Status {
+pub fn disable_reflection_key(branch Key) i64 {
+    k := branch
     if k != HKEY_CLASSES_ROOT && k != HKEY_CURRENT_USER
         && k != HKEY_LOCAL_MACHINE && k != HKEY_USERS
         && k != HKEY_PERFORMANCE_DATA && k != HKEY_PERFORMANCE_TEXT
         && k != HKEY_PERFORMANCE_NLSTEXT {
-        return error('Invalid provided base branch.')
+        //return error('Invalid provided key branch.')
+        return 16000
     }
     return C.RegDisableReflectionKey(k)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regenablereflectionkey
-// Restores registry reflection for the specified disabled key. 
+// enable_reflection_key restores registry reflection for the specified disabled key. 
 // Restoring reflection for a key does not affect reflection of any subkeys.
-fn enable_reflection_key(k Key) Status {
+pub fn enable_reflection_key(branch Key) i64 {
+    k := branch
     if k != HKEY_CLASSES_ROOT && k != HKEY_CURRENT_USER
         && k != HKEY_LOCAL_MACHINE && k != HKEY_USERS
         && k != HKEY_PERFORMANCE_DATA && k != HKEY_PERFORMANCE_TEXT
         && k != HKEY_PERFORMANCE_NLSTEXT {
-        return error('Invalid provided base branch.')
+        //return error('Invalid provided key branch.')
+        return 16000
     }
     return C.RegEnableReflectionKey(k)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regflushkey
-// flush_key writes all the attributes of the specified open registry key into the registry.
-fn flush_key(k mut Key) Status {
-    if k != HKEY_MAKE {
+fn flush_key(k mut Key) i64 {
+    if k != HKEY_MAKE && k != Key(0x00000000) {
         return C.RegFlushKey(k)
     }
 }
 
-// // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regflushkey
-fn (k mut Key) flush() Status {
-    return flush_key(k)
+// flush writes all the attributes of the specified open registry key into the registry
+pub fn (k Key) flush() i64 {
+    return flush_key(mut k)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-reggetvaluea#parameters
@@ -309,7 +310,7 @@ const (
 )
 
 struct ValueData {
-pub mut:
+mut:
     ptype   u32     // Key type
     data    voidptr // Key data
     pcbdata voidptr // Length of key data
@@ -317,44 +318,49 @@ pub mut:
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-reggetvaluea
 // get_key_value retrieves the type and data for the specified registry value.
-fn get_key_value(k mut Key, path string, value string) ?/***/ValueData {
-    mut _rvkdata = ValueData{
-        ptype:   0xffffffff // invalid for all
+/*pub fn get_key_value(branch Key, path string, value string) ?ValueData {
+    mut _rvkdata := ValueData{
+        ptype:   u32(0xffffffff) // invalid for all
         data:    voidptr(0xffffffff)
         pcbdata: voidptr(0xffffffff)
     }
-    status := C.RegGetValue(k, 
+    status := C.RegGetValue(branch, 
         path.cstr(), value.cstr(), RRF_RT_ANY, &_rvkdata.ptype, &_rvkdata.data, &_rvkdata.pcbdata)
-    if status != ERROR_SUCCESS {
+    if status != SUCCESS {
         return error('Cannot get value from selected key.')
     }
     return _rvkdata // &_rvkdata
-}
+}*/
+
+// typ return type of key
+pub fn (vd ValueData) typ() u32 { return vd.ptype }
+
+// data return byte array for key data.
+pub fn (vd ValueData) data() voidptr { return vd.data }
+
+// len return length of data.
+pub fn (vd ValueData) len() u32 { return u32( vd.pcbdata ) }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regloadkeya
 // load_key creates a subkey under HKEY_USERS or HKEY_LOCAL_MACHINE 
 // and loads the data from the specified registry hive into that subkey.
 // Applications that back up or restore system state including system files 
 // and registry hives should use the Volume Shadow Copy Service instead of the registry functions.
-fn load_key(k mut Key, path string, file_path string) Status {
-    return C.RegLoadKey(k, path.cstr(), file_path.cstr())
+pub fn load_key(branch Key, path string, file_path string) i64 {
+    return C.RegLoadKey(branch, path.cstr(), file_path.cstr())
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regopenkeyexa
 // open_key opens the specified registry key. 
 // Note that key names are not case sensitive.
-fn open_key(k mut Key, path string, access u32) ?Key {
-    mut _p_hkey := Key(HKEY_MAKE)
-    status := C.RegOpenKeyEx(k, path.cstr(), 0, access, &_p_hkey)
-    if status != ERROR_SUCCESS {
+pub fn open_key(branch Key, path string, access u32) ?/***/Key {
+    mut _p_hkey := HKEY_MAKE
+    status := C.RegOpenKeyEx(branch, path.cstr(), 0, access, &_p_hkey)
+    if status != SUCCESS {
         return error('Cannot open registry key.')
     }
-    return _p_hkey
+    return _p_hkey // &_p_hkey
 }
-
-// Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regqueryvalueexw
-// query_value retrieves the type and data for the specified value name associated with an open registry key.
-fn (k mut Key) query_value(v string) Status { return 0} // not implemented
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regrestorekeya
 const (
@@ -371,9 +377,9 @@ const (
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regrestorekeya
-// restore reads the registry information in a specified file and copies it over the specified key. 
+// restore_key reads the registry information in a specified file and copies it over the specified key. 
 // This registry information may be in the form of a key and multiple levels of subkeys.
-fn restore_key(k mut Key, file_path string) Status {
+pub fn restore_key(k Key, file_path string) i64 {
     return C.RegRestoreKey(k, file_path.cstr(), REG_FORCE_RESTORE)
 }
 
@@ -395,14 +401,13 @@ const (
 )
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regsavekeyexa#parameters
-// save saves the specified key and all of its subkeys and values to a registry file, in the specified format.
-fn save_key(k mut Key, file_path string, flags u32) Status {
+// save_key saves the specified key and all of its subkeys and values to a registry file, in the specified format.
+pub fn save_key(k Key, file_path string, flags u32) i64 {
     return C.RegSaveKeyEx(k, file_path.cstr(), 0, flags)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regsetkeyvaluea
-// set_key_value sets the data and type of a specified value under a registry key.
-fn set_key_value(k mut Key, name string, ktype u32, data voidptr, size i64) Status {
+fn set_key_value(k mut Key, name string, ktype u32, data []byte) i64 {
     if ktype != REG_SZ && ktype != REG_EXPAND_SZ
         && ktype != REG_BINARY && ktype != REG_DWORD
         && ktype != REG_DWORD_LITTLE_ENDIAN && ktype != REG_DWORD_BIG_ENDIAN
@@ -410,19 +415,38 @@ fn set_key_value(k mut Key, name string, ktype u32, data voidptr, size i64) Stat
         && ktype != REG_RESOURCE_LIST && ktype != REG_FULL_RESOURCE_DESCRIPTOR
         && ktype != REG_RESOURCE_REQUIREMENTS_LIST 
         && ktype != REG_QWORD && ktype != REG_QWORD_LITTLE_ENDIAN {
-        return error('Undefined key type')
+        //return error('Undefined key type')
+        return 16000
     }
-    return C.RegSetValueEx(k, name.cstr(), 0, ktype, data, size)
+    return C.RegSetValueEx(k, name.cstr(), 0, ktype, data.data, data.len)
 }
 
-// Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regsetkeyvaluea
-// set_key_value sets the data and type of a specified value under a registry key.
-fn (k mut Key) set_value(name string, ktype u32, data voidptr, size i64) Status {
-    return set_key_value(k, name, ktype, data, size)
+// set_value sets the data and type of a specified value under a registry key.
+pub fn (k Key) set_value(name string, ktype u32, data []byte) i64 {
+    return set_key_value(mut k, name, ktype, data)
+}
+
+// Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regqueryvalueexa
+fn get_key_value(k mut Key, name string) ?[]byte {
+    mut buf := []byte
+    mut n := u32(0)
+    status := C.RegQueryValueEx(k, name.cstr(), 0, 0, &buf, &n)
+    if status != SUCCESS {
+        return error('Cannot get key value.')
+    }
+    if n <= u32(0) {
+        return error('Key data not set.')
+    }
+    return buf
+}
+
+// get_key_value retrieves the type and data for the specified value name associated with an open registry key.
+pub fn (k Key) get_value(name string) ?[]byte {
+    return get_key_value(mut k, name)
 }
 
 // Ref - https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regunloadkeya
 // unload unloads the specified registry key and its subkeys from the registry.
-fn unload_key(k Key, path string) Status {
-    return C.RegUnLoadKey(k, path.cstr())
+pub fn unload_key(branch Key, path string) i64 {
+    return C.RegUnLoadKey(branch, path.cstr())
 }
